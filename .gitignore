@@ -1,0 +1,12 @@
+# Folders kept out of this repo
+CKAD-2026/
+clickhouse/
+
+# Secrets
+.env
+
+# Python clutter
+__pycache__/
+*.pyc
+venv/
+.venv/

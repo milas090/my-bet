@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: clickhouse
+  namespace: crypto-ticker
+spec:
+  serviceName: clickhouse
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clickhouse
+  template:
+    metadata:
+      labels:
+        app: clickhouse
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:24.3-alpine
+          ports:
+            - containerPort: 8123
+              name: http
+            - containerPort: 9000
+              name: tcp
+          env:
+            - name: CLICKHOUSE_DB
+              value: crypto
+            - name: CLICKHOUSE_USER
+              value: default
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: clickhouse-secret
+                  key: password
+          volumeMounts:
+            - name: clickhouse-data
+              mountPath: /var/lib/clickhouse
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 200m
+            limits:
+              memory: 1Gi
+              cpu: 500m
+      volumes:
+        - name: clickhouse-data
+          persistentVolumeClaim:
+            claimName: clickhouse-pvc

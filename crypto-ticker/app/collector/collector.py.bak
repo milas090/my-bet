@@ -1,0 +1,148 @@
+""" collects bitcoint data over websocket 
+live prices go to redis for dashboard
+and to clickhouse for analytics """
+
+import json 
+import logging 
+import os
+import time
+from datetime import datetime, timezone
+
+import clickhouse_connect
+import redis
+import websocket
+
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("collector")
+
+
+
+SYMBOL = os.environ.get("SYMBOL", "bitcoin")
+BINANCE_SYMBOL = os.environ.get("BINANCE_SYMBOL", "btcusdt")
+
+REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
+REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
+REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD")
+
+CLICKHOUSE_HOST = os.environ.get("CLICKHOUSE_HOST", "clickhouse")
+CLICKHOUSE_PORT = int(os.environ.get("CLICKHOUSE_PORT", "8123"))
+CLICKHOUSE_USER = os.environ.get("CLICKHOUSE_USER", "default")
+CLICKHOUSE_PASSWORD = os.environ.get("CLICKHOUSE_PASSWORD")
+CLICKHOUSE_DB = os.environ.get("CLICKHOUSE_DB", "crypto")
+
+
+def main ():
+    log.info(f"starting collector for {SYMBOL} via {BINANCE_SYMBOL}")
+    redis_client = redis.Redis(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        password=REDIS_PASSWORD,
+        decode_responses=True,
+    )
+    redis_client.ping()
+    log.info("redis connected")
+
+    ch_client = clickhouse_connect.get_client(
+        host=CLICKHOUSE_HOST,
+        port=CLICKHOUSE_PORT,
+        username=CLICKHOUSE_USER,
+        password=CLICKHOUSE_PASSWORD,
+        database=CLICKHOUSE_DB,
+    )
+    ch_client.command("SELECT 1")
+    log.info("clickhouse connected")
+
+    collector = BinanceCollector(redis_client, ch_client, SYMBOL, BINANCE_SYMBOL)
+    collector.run()
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+class BinanceCollector: 
+    """ Stream live prices and 1 minute candles from Biannce"""
+
+    def __init__ (self, redis_client, ch_client, symbol, binance_symbol): 
+        self.redis = redis_client
+        self.ch = ch_client
+        self.symbol = symbol 
+        self.url = (
+                f"wss://stream.binance.com:9443/stream"
+                f"?streams={binance_symbol}@ticker/{binance_symbol}@kline_1m"
+                )
+
+    def handle_tick(self, data):
+        """ Live price update to redis"""
+
+        record = {
+           "price": float(data["c"]),
+           "change_24h": float(data["P"]),
+           "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+        self.redis.hset("prices:latest", self.symbol, json.dumps(record))
+
+
+    def handle_candle(self, kline):
+        """ store one completed minute of trading"""
+        if not kline["x"]:
+            return
+        row = [
+            datetime.fromtimestamp(kline["t"]/ 1000, tz=timezone.utc), 
+            self.symbol,
+              float(kline["o"]),
+            float(kline["h"]),
+            float(kline["l"]),
+            float(kline["c"]),
+            float(kline["v"]),
+            float(kline["q"]),
+            int(kline["n"]),
+            float(kline["V"]),
+            float(kline["Q"]),
+            "binance",
+        ]
+        self.ch.insert("prices", [row], column_names=PRICE_COLUMNS)
+        log.info(f"stored candle close={kline['c']}")
+        
+    def on_message(self, ws, message):
+        """ called by the websocket library for every message binance sends"""
+        payload = json.loads(message)
+        stream = payload.get ("stream" , "")
+        data = payload.get ("data", {})
+
+        try:
+            if stream.endswith("@ticker"):
+                 self.handle_tick(data)
+            elif "@kline" in stream:
+                 self.handle_candle(data["k"])
+        except(KeyError, ValueError) as exc:
+            log.error(f"unexpecrted message format on {stream}: {exc}")
+        except Exception as exc:
+            log.error(f"failed to store data from {stream}: {exc}")
+
+    def on_open(self, ws):
+        log.info("websocket connected")
+
+    def on_error(self, ws, error):
+        log.error(f"websocket error: {error}")
+
+    def on_close(self, ws, status_code, message):
+        log.warning(f"websocket closed: {status_code}")
+
+    def run(self):
+        """Connect to Binance and process messages until stopped."""
+        while True:
+            ws = websocket.WebSocketApp(
+                self.url,
+                on_message=self.on_message,
+                on_open=self.on_open,
+                on_error=self.on_error,
+                on_close=self.on_close,
+            )
+            ws.run_forever(ping_interval=30, ping_timeout=10)
+            log.warning("connection lost, reconnecting in 5s")
+            time.sleep(5)             

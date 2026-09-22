@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fetcher-config
+  namespace: crypto-ticker
+data:
+  SYMBOLS: "bitcoin,ethereum,solana"
+  VS_CURRENCY: "usd"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  HISTORY_MAX_POINTS: "288"
