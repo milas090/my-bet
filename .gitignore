@@ -10,3 +10,7 @@ __pycache__/
 *.pyc
 venv/
 .venv/
+
+
+# Docker image exports: use a container registry, not git
+*.tar
