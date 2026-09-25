@@ -236,7 +236,7 @@ CREATE TABLE crypto.prices
     `taker_buy_quote` Float64,
     `source` String
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree
 PARTITION BY toYYYYMM(timestamp)
 ORDER BY (symbol, timestamp)
 ```
