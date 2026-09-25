@@ -19,10 +19,12 @@ spec:
         spec:
           automountServiceAccountToken: false
           restartPolicy: Never
+          imagePullSecrets: 
+          - name: ghcr-pull
           containers:
             - name: fetcher
-              image: crypto-fetcher:v1
-              imagePullPolicy: Never
+              image: ghcr.io/milas090/crypto-fetcher:v1
+              imagePullPolicy: IfNotPresent
               envFrom:
                 - configMapRef:
                     name: fetcher-config

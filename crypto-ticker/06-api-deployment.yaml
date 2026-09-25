@@ -14,10 +14,12 @@ spec:
         app: crypto-api
     spec:
       automountServiceAccountToken: false
+      imagePullSecrets: 
+      - name: ghcr-pull 
       containers:
         - name: crypto-api
-          image: crypto-api:v1
-          imagePullPolicy: Never
+          image: ghcr.io/milas090/crypto-api:v3
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
           envFrom:

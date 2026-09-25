@@ -14,10 +14,12 @@ spec:
         app: collector
     spec:
       automountServiceAccountToken: false
+      imagePullSecrets:                                 
+      - name: ghcr-pull
       containers:
         - name: collector
-          image: crypto-collector:v1
-          imagePullPolicy: Never
+          image: ghcr.io/milas090/crypto-collector:v1
+          imagePullPolicy: IfNotPresent
           env:
             - name: SYMBOL
               value: bitcoin
