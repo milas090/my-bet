@@ -1,20 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: collector
+  name: collector-ltc
   namespace: crypto-ticker
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: collector
+      app: collector-ltc
   template:
     metadata:
       labels:
-        app: collector
+        app: collector-ltc
+        role: collector
     spec:
       automountServiceAccountToken: false
-      imagePullSecrets:                                 
+      imagePullSecrets:
       - name: ghcr-pull
       containers:
         - name: collector
@@ -22,9 +23,9 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: SYMBOL
-              value: bitcoin
+              value: litecoin
             - name: BINANCE_SYMBOL
-              value: btcusdt
+              value: ltcusdt
             - name: REDIS_HOST
               value: redis
             - name: REDIS_PORT

@@ -60,7 +60,7 @@ spec:
     - from:
         - podSelector: { matchLabels: { app: crypto-api } }
         - podSelector: { matchLabels: { app: fetcher } }
-        - podSelector: { matchLabels: { app: collector } }
+        - podSelector: { matchLabels: { role: collector } }
       ports:
         - { port: 6379 }
  
@@ -131,7 +131,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: collector
+     role: collector
   policyTypes:
     - Ingress
     - Egress
@@ -172,7 +172,7 @@ spec:
     - Egress
   ingress:
     - from:
-        - podSelector: { matchLabels: { app: collector } }
+        - podSelector: { matchLabels: { role: collector } }
       ports:
         - { port: 8123 }
  

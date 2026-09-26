@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector-btc
+  namespace: crypto-ticker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector-btc
+  template:
+    metadata:
+      labels:
+        app: collector-btc
+        role: collector
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:                                 
+      - name: ghcr-pull
+      containers:
+        - name: collector
+          image: ghcr.io/milas090/crypto-collector:v1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SYMBOL
+              value: bitcoin
+            - name: BINANCE_SYMBOL
+              value: btcusdt
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: CLICKHOUSE_PORT
+              value: "8123"
+            - name: CLICKHOUSE_HOST
+              value: clickhouse
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: password
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: clickhouse-secret
+                  key: password
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 50m
+            limits:
+              memory: 128Mi
+              cpu: 100m
