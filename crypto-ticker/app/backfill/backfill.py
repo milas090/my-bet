@@ -11,7 +11,8 @@ COINS = [
         ("bitcoin-cash","BCHUSDT"),
         ]
 
-START = datetime.now(timezone.utc) - timedelta(hours=24)
+HOURS = int(os.environ.get("BACKFILL_HOURS", "24"))
+START = datetime.now(timezone.utc) - timedelta(hours=HOURS)
 END = datetime.now(timezone.utc) - timedelta(minutes=2)
 
 COLUMNS = [
