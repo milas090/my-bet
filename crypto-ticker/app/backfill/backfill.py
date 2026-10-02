@@ -2,6 +2,7 @@ import os
 import clickhouse_connect
 import json 
 from datetime import datetime, timedelta, timezone
+import time 
 import urllib.request
 import clickhouse_connect
 
@@ -36,8 +37,18 @@ def fetch (pair, start_ms, end_ms):
             f"?symbol={pair}&interval=1m"
             f"&startTime={start_ms}&endTime={end_ms}&limit=1000"
             )
-    with urllib.request.urlopen(url) as response:
-           return json.load(response)
+
+
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(url, timeout=30) as response:
+                return json.load(response)
+        except Exception as error:
+            print(f"attempt {attempt + 1} failed: {error}")
+            time.sleep(10)
+    raise RuntimeError(f"giving up on {pair} after 3 attempts")
+
+
 
 
 for coin, pair in COINS:
