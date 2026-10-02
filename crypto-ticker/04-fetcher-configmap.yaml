@@ -4,7 +4,7 @@ metadata:
   name: fetcher-config
   namespace: crypto-ticker
 data:
-  SYMBOLS: "bitcoin,ethereum,solana"
+  SYMBOLS: "bitcoin,litecoin,bitcoin-cash"
   VS_CURRENCY: "usd"
   REDIS_HOST: "redis"
   REDIS_PORT: "6379"
