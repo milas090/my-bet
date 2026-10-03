@@ -1,0 +1,95 @@
+name: build-images
+
+# Layer 1: start only when image code changes.
+# Keep these exclusions in sync with EXCLUDE in "List changed services".
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crypto-ticker/app/**"
+      - "!crypto-ticker/app/**/*.md"
+      - "!crypto-ticker/app/**/__pycache__/**"
+      - ".github/workflows/build-images.yml"
+
+# Deny by default; each job grants itself only what it needs.
+permissions: {}
+
+jobs:
+  changes:
+    name: Detect changed services
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      services: ${{ steps.filter.outputs.services }}
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List changed services
+        id: filter
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          APP_DIR: crypto-ticker/app
+          EXCLUDE: '\.md$|__pycache__'
+        run: |
+          all_services() {
+            find "$APP_DIR" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+              | sort | jq -R . | jq -sc .
+          }
+
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            echo "Cannot compare with previous commit: building all services"
+            services=$(all_services)
+          elif git diff --name-only "$BEFORE" "$AFTER" | grep -qx '.github/workflows/build-images.yml'; then
+            echo "Pipeline file changed: building all services"
+            services=$(all_services)
+          else
+            services=$(git diff --name-only "$BEFORE" "$AFTER" \
+              | grep "^$APP_DIR/[^/]*/" \
+              | grep -vE "$EXCLUDE" \
+              | cut -d/ -f3 \
+              | sort -u \
+              | jq -R . | jq -sc .)
+          fi
+
+          echo "Services to build: $services"
+          echo "services=$services" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.service }}
+    needs: changes
+    if: needs.changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push crypto-${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: crypto-ticker/app/${{ matrix.service }}
+          push: true
+          tags: |
+            ghcr.io/milas090/crypto-${{ matrix.service }}:${{ github.sha }}
+            ghcr.io/milas090/crypto-${{ matrix.service }}:build-${{ github.run_number }}
