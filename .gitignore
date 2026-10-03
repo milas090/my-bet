@@ -4,6 +4,10 @@ clickhouse/
 
 # Secrets
 .env
+# Editor temp files and backups
+*.swp
+*.bak
+
 
 # Python clutter
 __pycache__/
