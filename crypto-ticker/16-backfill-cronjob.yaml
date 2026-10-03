@@ -24,7 +24,7 @@ spec:
           - name: ghcr-pull
           containers:
             - name: backfill
-              image: ghcr.io/milas090/crypto-backfill:v3
+              image: ghcr.io/milas090/crypto-backfill:build-1
               imagePullPolicy: IfNotPresent
               env:
                 - name: CLICKHOUSE_HOST
