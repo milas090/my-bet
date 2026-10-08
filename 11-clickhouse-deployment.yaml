@@ -33,6 +33,8 @@ spec:
                 secretKeyRef:
                   name: clickhouse-secret
                   key: password
+            - name: CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
+              value: "1"
           volumeMounts:
             - name: clickhouse-data
               mountPath: /var/lib/clickhouse
