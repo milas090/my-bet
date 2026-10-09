@@ -1,0 +1,10 @@
+# Checks that run automatically before every git commit.
+# Install the hook once per clone with: pre-commit install
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: detect-private-key
+      - id: trailing-whitespace
