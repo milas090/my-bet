@@ -93,3 +93,45 @@ jobs:
           tags: |
             ghcr.io/milas090/crypto-${{ matrix.service }}:${{ github.sha }}
             ghcr.io/milas090/crypto-${{ matrix.service }}:build-${{ github.run_number }}
+  update-manifests: 
+    name: Update image tags in my-bet-gitops
+    needs: [changes, build] 
+    if: needs.changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: 
+      contents: read
+    concurrency: 
+      group: update-manifests
+      cancel-in-progress: false
+    steps: 
+      - name: Check out my-bet-gitops
+        uses: actions/checkout@v4
+        with: 
+          repository: milas090/my-bet-gitops
+          ssh-key: ${{ secrets.GITOPS_DEPLOY_KEY}}
+      - name: Point manifests at the new images
+        env:
+          SERVICES: ${{ needs.changes.outputs.services }}
+          TAG: ${{ github.sha }}
+        run: |
+          for s in $(echo "$SERVICES" | jq -r '.[]'); do
+            image="ghcr.io/milas090/crypto-$s"
+            sed -i "s|$image:[^ ]*|$image:$TAG|" k8s/*.yaml
+            grep -q "$image:$TAG" k8s/*.yaml || { echo "ERROR: no manifest uses $image"; exit 1; }
+            echo "$image -> $TAG"
+          done
+          git diff --stat
+        - name: Commit and push
+        env:
+          SERVICES: ${{ needs.changes.outputs.services }}
+          TAG: ${{ github.sha }}
+        run: |
+          if git diff --quiet; then
+            echo "No manifest changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "deploy: $SERVICES at $TAG"
+          git push
