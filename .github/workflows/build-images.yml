@@ -122,7 +122,7 @@ jobs:
             echo "$image -> $TAG"
           done
           git diff --stat
-        - name: Commit and push
+      - name: Commit and push
         env:
           SERVICES: ${{ needs.changes.outputs.services }}
           TAG: ${{ github.sha }}
