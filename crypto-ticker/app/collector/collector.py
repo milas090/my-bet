@@ -1,9 +1,9 @@
-""" collects bitcoint data over websocket 
+""" collects bitcoint data over websocket
 live prices go to redis for dashboard
 and to clickhouse for analytics """
 
-import json 
-import logging 
+import json
+import logging
 import os
 import time
 from datetime import datetime, timezone
@@ -37,13 +37,13 @@ PRICE_COLUMNS = [
     "taker_buy_quote", "source",
     ]
 
-class BinanceCollector: 
+class BinanceCollector:
     """ Stream live prices and 1 minute candles from Biannce"""
 
-    def __init__ (self, redis_client, ch_client, symbol, binance_symbol): 
+    def __init__ (self, redis_client, ch_client, symbol, binance_symbol):
         self.redis = redis_client
         self.ch = ch_client
-        self.symbol = symbol 
+        self.symbol = symbol
         self.url = (
                 f"wss://stream.binance.com:9443/stream"
                 f"?streams={binance_symbol}@ticker/{binance_symbol}@kline_1m"
@@ -65,7 +65,7 @@ class BinanceCollector:
         if not kline["x"]:
             return
         row = [
-            datetime.fromtimestamp(kline["t"]/ 1000, tz=timezone.utc), 
+            datetime.fromtimestamp(kline["t"]/ 1000, tz=timezone.utc),
             self.symbol,
               float(kline["o"]),
             float(kline["h"]),
@@ -80,7 +80,7 @@ class BinanceCollector:
         ]
         self.ch.insert("prices", [row], column_names=PRICE_COLUMNS)
         log.info(f"stored candle close={kline['c']}")
-        
+
     def on_message(self, ws, message):
         """ called by the websocket library for every message binance sends"""
         payload = json.loads(message)
@@ -118,7 +118,7 @@ class BinanceCollector:
             )
             ws.run_forever(ping_interval=30, ping_timeout=10)
             log.warning("connection lost, reconnecting in 5s")
-            time.sleep(5)             
+            time.sleep(5)
 def main ():
     log.info(f"starting collector for {SYMBOL} via {BINANCE_SYMBOL}")
     redis_client = redis.Redis(

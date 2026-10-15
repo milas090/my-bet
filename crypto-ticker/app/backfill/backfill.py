@@ -1,8 +1,8 @@
-import os 
+import os
 import clickhouse_connect
-import json 
+import json
 from datetime import datetime, timedelta, timezone
-import time 
+import time
 import urllib.request
 import clickhouse_connect
 
@@ -30,7 +30,7 @@ client = clickhouse_connect.get_client(
     database=os.environ.get("CLICKHOUSE_DB", "crypto"),
 )
 
- 
+
 def fetch (pair, start_ms, end_ms):
     url = (
             "https://api.binance.com/api/v3/klines"

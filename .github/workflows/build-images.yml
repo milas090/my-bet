@@ -93,21 +93,21 @@ jobs:
           tags: |
             ghcr.io/milas090/crypto-${{ matrix.service }}:${{ github.sha }}
             ghcr.io/milas090/crypto-${{ matrix.service }}:build-${{ github.run_number }}
-  update-manifests: 
+  update-manifests:
     name: Update image tags in my-bet-gitops
-    needs: [changes, build] 
+    needs: [changes, build]
     if: needs.changes.outputs.services != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions: 
+    permissions:
       contents: read
-    concurrency: 
+    concurrency:
       group: update-manifests
       cancel-in-progress: false
-    steps: 
+    steps:
       - name: Check out my-bet-gitops
         uses: actions/checkout@v4
-        with: 
+        with:
           repository: milas090/my-bet-gitops
           ref: main
           ssh-key: ${{ secrets.GITOPS_DEPLOY_KEY}}
